@@ -1,0 +1,3 @@
+build/
+.vim/
+compile-commands.json
