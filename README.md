@@ -1,3 +1,3 @@
-# Advent of Code 2022
+# Advent of Code
 
-This is my Advent of Code work for 2022.
+This is my Advent of Code work by year and day.
