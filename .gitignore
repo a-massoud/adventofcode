@@ -1,5 +1,6 @@
 build/
 .vim/
+.cache/
 compile_commands.json
 input.txt
 sample.txt
