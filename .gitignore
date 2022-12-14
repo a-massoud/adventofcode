@@ -4,3 +4,5 @@ build/
 compile_commands.json
 input.txt
 sample.txt
+.vimspector.json
+.vimrc
