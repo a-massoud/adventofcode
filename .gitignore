@@ -7,3 +7,5 @@ sample.txt
 .vimspector.json
 .vimrc
 .vscode/
+Cargo.lock
+target/
