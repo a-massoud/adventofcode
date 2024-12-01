@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use std::env;
+use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
@@ -22,38 +23,26 @@ fn main() {
     println!("Part 2 results: {}", part2(&input));
 }
 
-fn read_file(fname: &str) -> Result<(Vec<i32>, Vec<i32>), String> {
+fn read_file(fname: &str) -> Result<(Vec<i32>, Vec<i32>), Box<dyn Error>> {
     let Ok(file) = File::open(fname) else {
-        return Err(format!("failed to open {} for reading", fname));
+        return Err(format!("failed to open {} for reading", fname).into());
     };
     let mut file = BufReader::new(file);
 
     let mut input = String::new();
     let Ok(_) = file.read_to_string(&mut input) else {
-        return Err(format!("failed to read from {}", fname));
+        return Err(format!("failed to read from {}", fname).into());
     };
 
     let list1 = input
         .split_whitespace()
         .enumerate()
-        .filter_map(|(i, v)| {
-            if i % 2 == 0 {
-                Some(v.parse().expect("failed to parse int"))
-            } else {
-                None
-            }
-        })
+        .filter_map(|(i, v)| if i % 2 == 0 { v.parse().ok() } else { None })
         .collect();
     let list2 = input
         .split_whitespace()
         .enumerate()
-        .filter_map(|(i, v)| {
-            if i % 2 == 1 {
-                Some(v.parse().expect("failed to parse int"))
-            } else {
-                None
-            }
-        })
+        .filter_map(|(i, v)| if i % 2 == 1 { v.parse().ok() } else { None })
         .collect();
 
     Ok((list1, list2))
