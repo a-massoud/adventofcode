@@ -1,6 +1,6 @@
 // It's not pretty but it works; just brute forced part 2
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::{env, iter};
@@ -15,97 +15,76 @@ fn main() -> Result<()> {
 
     let input = read_input(&argv[1])?;
 
-    println!("Part 1 result: {}", part1(&input));
-    println!("Part 2 result: {}", part2(&input));
+    println!("Part 1 result: {}", part1(&input)?);
+    println!("Part 2 result: {}", part2(&input)?);
 
     Ok(())
 }
 
 fn read_input(fname: &str) -> Result<Vec<Report>> {
     let mut file = BufReader::new(
-        File::open(fname).with_context(|| format!("failed to open file {}", fname))?,
+        File::open(fname)
+            .with_context(|| format!("failed to open file {}", String::from(fname)))?,
     );
 
     let mut input = String::new();
     file.read_to_string(&mut input)?;
 
-    let reports = input
+    input
         .lines()
         .map(|line| {
             line.split_whitespace()
-                .map(|v| match v.parse::<i32>() {
-                    Err(_) => Err(anyhow!("failed to parse {}", v)),
-                    Ok(v) => Ok(v),
+                .map(|v| {
+                    v.parse()
+                        .with_context(|| format!("failed to parse `{}`", String::from(v)))
                 })
-                .collect::<Result<Report>>()
+                .collect()
         })
-        .collect::<Result<Vec<Report>>>();
-
-    reports
+        .collect()
 }
 
-fn part1(input: &Vec<Report>) -> i32 {
+fn is_safe(report: &Report) -> bool {
+    if report.len() < 2 {
+        return true;
+    }
+
+    let sign = (report[1] - report[0]).signum();
+    if sign == 0 {
+        return false;
+    }
+
+    !report.windows(2).any(|i| {
+        let diff = i[1] - i[0];
+        diff.signum() != sign || diff.abs() > 3 || diff.abs() < 1
+    })
+}
+
+fn part1(input: &Vec<Report>) -> Result<i32> {
     input
         .iter()
-        .map(|report| {
-            if report.len() < 2 {
-                return true;
-            }
-
-            let sign = (report[1] - report[0]).signum();
-            if sign == 0 {
-                return false;
-            }
-
-            for i in 1..report.len() {
-                let diff = report[i] - report[i - 1];
-                if diff.signum() != sign || diff.abs() > 3 || diff.abs() < 1 {
-                    return false;
-                }
-            }
-
-            return true;
-        })
+        .map(is_safe)
         .filter(|&x| x)
         .count()
         .try_into()
-        .expect("too many elements")
+        .context("result too large")
 }
 
-fn part2(input: &Vec<Report>) -> i32 {
+fn part2(input: &Vec<Report>) -> Result<i32> {
     input
         .iter()
         .map(|report| {
             iter::repeat(report)
-                .take(report.len() + 1)
-                .zip(0..=report.len())
+                .take(report.len())
+                .zip(0..report.len())
                 .map(|(report, r)| {
                     let mut report = report.clone();
-                    if r != report.len() {
-                        report.remove(r);
-                    }
-                    if report.len() < 2 {
-                        return true;
-                    }
-
-                    let sign = (report[1] - report[0]).signum();
-                    if sign == 0 {
-                        return false;
-                    }
-
-                    for i in 1..report.len() {
-                        let diff = report[i] - report[i - 1];
-                        if diff.signum() != sign || diff.abs() > 3 || diff.abs() < 1 {
-                            return false;
-                        }
-                    }
-
-                    return true;
+                    report.remove(r);
+                    is_safe(&report)
                 })
                 .any(|v| v)
         })
         .filter(|&x| x)
         .count()
         .try_into()
-        .expect("too many elements")
+        .context("result too large")
 }
