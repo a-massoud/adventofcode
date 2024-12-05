@@ -59,19 +59,19 @@ fn parse_input(input: &str) -> Result<(HashMap<(i32, i32), Ordering>, Vec<Vec<i3
     Ok((ords, lists))
 }
 
+fn compare_pages(i: i32, j: i32, ords: &HashMap<(i32, i32), Ordering>) -> Ordering {
+    if let Some(ord) = ords.get(&(i, j)) {
+        *ord
+    } else {
+        Ordering::Equal
+    }
+}
+
 fn part1(ords: &HashMap<(i32, i32), Ordering>, lists: &Vec<Vec<i32>>) -> i32 {
     lists
         .iter()
-        .filter(|&list| {
-            let mut sorted_list = list.clone();
-            sorted_list.sort_by(|&i, &j| {
-                if let Some(ord) = ords.get(&(i, j)) {
-                    *ord
-                } else {
-                    Ordering::Equal
-                }
-            });
-            sorted_list == *list
+        .filter(|list| {
+            list.is_sorted_by(|&i, &j| compare_pages(i, j, ords) == Ordering::Less)
         })
         .map(|list| list.get(list.len() / 2).unwrap_or(&0))
         .sum()
@@ -82,13 +82,7 @@ fn part2(ords: &HashMap<(i32, i32), Ordering>, lists: &Vec<Vec<i32>>) -> i32 {
         .iter()
         .filter_map(|list| {
             let mut sorted_list = list.clone();
-            sorted_list.sort_by(|&i, &j| {
-                if let Some(ord) = ords.get(&(i, j)) {
-                    *ord
-                } else {
-                    Ordering::Equal
-                }
-            });
+            sorted_list.sort_by(|&i, &j| compare_pages(i, j, ords));
             if sorted_list != *list {
                 Some(sorted_list)
             } else {
