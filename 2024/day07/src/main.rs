@@ -16,7 +16,17 @@ impl Operator {
         match *self {
             Operator::Add => x + y,
             Operator::Mult => x * y,
-            Operator::Concat => x * 10i128.pow(((y as f64).log10().floor() as u32) + 1) + y,
+            Operator::Concat => {
+                x * 10i128.pow({
+                    let mut a = y;
+                    let mut n = 0;
+                    while a > 0 {
+                        a /= 10;
+                        n += 1;
+                    }
+                    n
+                }) + y
+            }
         }
     }
 }
