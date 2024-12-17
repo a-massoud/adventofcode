@@ -189,6 +189,11 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
+    unsafe {
+        gl::DeleteVertexArrays(1, &vao);
+        gl::DeleteBuffers(1, &vbo);
+    }
+
     Ok(())
 }
 
