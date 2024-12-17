@@ -28,9 +28,9 @@ const SQUARE: [GLfloat; 18] = [
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();
-    if args.len() < 5 {
+    if args.len() < 6 {
         bail!(
-            "usage: {} <input file> <room width> <room height> <states per second>",
+            "usage: {} <input file> <room width> <room height> <states per second> <starting time>",
             args[0]
         );
     }
@@ -52,6 +52,11 @@ fn main() -> anyhow::Result<()> {
         .context("states per second must be a number")?;
     if states_per_s <= 0f64 {
         bail!("states per second must be positive");
+    }
+
+    let starting_time: f64 = args[5].parse().context("starting time must be a number")?;
+    if starting_time < 0f64 {
+        bail!("starting time must be nonnegative");
     }
 
     let input =
@@ -126,7 +131,7 @@ fn main() -> anyhow::Result<()> {
     )
     .as_matrix();
 
-    glfw.set_time(0f64);
+    glfw.set_time(starting_time);
     while !win.should_close() {
         win.swap_buffers();
 
