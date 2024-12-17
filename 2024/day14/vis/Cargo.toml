@@ -1,0 +1,12 @@
+[package]
+name = "aoc2024d14vis"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+glad-gl = { path = "./glad-gl" }
+glfw = "0.59"
+nalgebra = "0.33"
+regex = "1.11"
+rand = "0.8"
