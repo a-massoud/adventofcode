@@ -1,4 +1,4 @@
-// Slow but works (the Dijkstra's implementation could definitely use some work)
+// Fast now
 
 use anyhow::{anyhow, bail, Context};
 use std::{
@@ -45,7 +45,6 @@ fn main() -> anyhow::Result<()> {
         "Part 1: {}",
         dijkstra(START, END, &simulate_falling(&input, PART1_AMT))
             .ok_or(anyhow!("failed to find path"))?
-            .len()
             - 1
     );
 
@@ -74,7 +73,7 @@ fn simulate_falling(input: &[Vec2], n: usize) -> HashSet<Vec2> {
     input.iter().take(n).cloned().collect()
 }
 
-fn dijkstra(start: Vec2, end: Vec2, walls: &HashSet<Vec2>) -> Option<HashSet<Vec2>> {
+fn dijkstra(start: Vec2, end: Vec2, walls: &HashSet<Vec2>) -> Option<usize> {
     const DIRS: [Vec2; 4] = [
         Vec2::new(1, 0),
         Vec2::new(0, 1),
@@ -134,10 +133,10 @@ fn dijkstra(start: Vec2, end: Vec2, walls: &HashSet<Vec2>) -> Option<HashSet<Vec
         }
     }
 
-    let mut r = HashSet::new();
+    let mut r = 1;
     let mut c = visited.get(&end)?.1;
     while c.is_some() {
-        r.insert(c.unwrap());
+        r += 1;
         c = visited.get(&c.unwrap()).expect("parent not visited").1;
     }
 
@@ -145,17 +144,20 @@ fn dijkstra(start: Vec2, end: Vec2, walls: &HashSet<Vec2>) -> Option<HashSet<Vec
 }
 
 fn find_blocking_coord(input: &[Vec2]) -> Option<Vec2> {
-    let mut walls = HashSet::new();
-    let mut cpath = dijkstra(START, END, &walls).unwrap();
-    for &r in input {
-        walls.insert(r);
-        if cpath.contains(&r) {
-            cpath = match dijkstra(START, END, &walls) {
-                Some(p) => p,
-                None => return Some(r),
-            }
+    let mut max = input.len();
+    let mut min = 0;
+    while min < max - 1 {
+        let c = (min + max) / 2;
+        if dijkstra(START, END, &simulate_falling(input, c)).is_some() {
+            min = c;
+        } else {
+            max = c;
         }
     }
 
-    None
+    if max == input.len() {
+        None
+    } else {
+        Some(input[min])
+    }
 }
