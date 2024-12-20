@@ -1,18 +1,13 @@
-// VERY slow. But, it works. The much better solution is to precompute the distances along the
-// path, then just check if any two points are manhattan distance <= 20 apart & if their values
-// differ by > 100
+// I still am actually proud of my first solution but this is undeniably better
 
 use anyhow::{anyhow, bail, Context};
-use rayon::prelude::*;
-use std::{
-    collections::{BinaryHeap, HashMap},
-    env,
-    fmt::Display,
-    fs,
-    ops::{Add, AddAssign, Sub, SubAssign},
-};
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::env;
+use std::fmt::Display;
+use std::fs;
+use std::ops::{Add, AddAssign, Sub, SubAssign};
 
-const CUTOFF_VALUE: i64 = 100;
+const CUTOFF_VALUE: usize = 100;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct Vec2 {
@@ -69,7 +64,7 @@ impl Display for Vec2 {
     }
 }
 
-type Graph = HashMap<Vec2, HashMap<Vec2, i64>>;
+type Graph = HashMap<Vec2, HashSet<Vec2>>;
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -109,18 +104,18 @@ fn parse_input(input: &str) -> anyhow::Result<(Vec2, Vec2, Graph)> {
             }
 
             if ch != b'#' {
-                let mut edges = HashMap::new();
+                let mut edges = HashSet::new();
                 if y < lines.len() - 1 && lines[y + 1].get(x).is_some_and(|&x| x != b'#') {
-                    edges.insert(Vec2::new(x.try_into()?, (y + 1).try_into()?), 1);
+                    edges.insert(Vec2::new(x.try_into()?, (y + 1).try_into()?));
                 }
                 if y > 0 && lines[y - 1].get(x).is_some_and(|&x| x != b'#') {
-                    edges.insert(Vec2::new(x.try_into()?, (y - 1).try_into()?), 1);
+                    edges.insert(Vec2::new(x.try_into()?, (y - 1).try_into()?));
                 }
                 if line.get(x - 1).is_some_and(|&x| x != b'#') {
-                    edges.insert(Vec2::new((x - 1).try_into()?, y.try_into()?), 1);
+                    edges.insert(Vec2::new((x - 1).try_into()?, y.try_into()?));
                 }
                 if line.get(x + 1).is_some_and(|&x| x != b'#') {
-                    edges.insert(Vec2::new((x + 1).try_into()?, y.try_into()?), 1);
+                    edges.insert(Vec2::new((x + 1).try_into()?, y.try_into()?));
                 }
 
                 graph.insert(Vec2::new(x.try_into()?, y.try_into()?), edges);
@@ -131,108 +126,54 @@ fn parse_input(input: &str) -> anyhow::Result<(Vec2, Vec2, Graph)> {
     Ok((start, end, graph))
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct DijkstraNode {
-    v: Vec2,
-    w: i64,
-}
-
-impl DijkstraNode {
-    fn new(v: Vec2, w: i64) -> Self {
-        Self { v, w }
-    }
-}
-
-impl Ord for DijkstraNode {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.w.cmp(&self.w).then(self.v.cmp(&other.v))
-    }
-}
-
-impl PartialOrd for DijkstraNode {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-fn dijkstra(start: Vec2, end: Vec2, graph: &Graph) -> HashMap<Vec2, (i64, Option<Vec2>)> {
-    let mut visited = HashMap::new();
-    let mut queue = BinaryHeap::new();
-    queue.push(DijkstraNode::new(start, 0));
-    visited.insert(start, (0, None));
-    while let Some(v) = queue.pop() {
-        if v.v == end {
-            break;
-        }
-
-        for (&e, &weight) in graph.get(&v.v).expect("malformed graph") {
-            if visited.get(&e).is_some_and(|&(w, _)| w <= v.w + weight) {
-                continue;
-            }
-
-            visited.insert(e, (v.w + weight, Some(v.v)));
-            queue.push(DijkstraNode::new(e, v.w + weight));
-        }
-    }
-
-    visited
-}
-
 fn get_shortest_path(start: Vec2, end: Vec2, graph: &Graph) -> Option<Vec<Vec2>> {
-    let visited = dijkstra(start, end, graph);
+    let mut visited = HashMap::new();
+    let mut queue = VecDeque::new();
+    queue.push_back(start);
+    visited.insert(start, None);
+    while let Some(v) = queue.pop_front() {
+        if v == end {
+            continue;
+        }
+        for &e in graph.get(&v).expect("malformed graph") {
+            visited.entry(e).or_insert_with(|| {
+                queue.push_back(e);
+                Some(v)
+            });
+        }
+    }
+    if !visited.contains_key(&end) {
+        return None;
+    }
 
     let mut c = Some(end);
     let mut path = Vec::new();
     while let Some(v) = c {
         path.push(v);
-        c = visited[&v].1;
+        c = visited[&v];
     }
+    path.reverse();
 
     Some(path)
-}
-
-fn get_path_len(start: Vec2, end: Vec2, graph: &Graph) -> Option<i64> {
-    Some(dijkstra(start, end, graph).get(&end)?.0)
 }
 
 fn n_with_glitches(
     start: Vec2,
     end: Vec2,
     graph: &Graph,
-    glitch_length: i64,
+    glitch_length: usize,
 ) -> anyhow::Result<i64> {
     let path = get_shortest_path(start, end, graph).ok_or(anyhow!("no path found"))?;
 
-    let t = path
-        .par_iter()
-        .map(|v| (v, &graph[v]))
-        .map(|(&v, original)| {
-            let mut t = 0;
-            let mut mgraph = graph.clone();
-            for e in (v.x - glitch_length..v.x + glitch_length + 1)
-                .flat_map(|x| {
-                    (v.y - glitch_length..v.y + glitch_length + 1).map(move |y| Vec2::new(x, y))
-                })
-                .filter(|&e| {
-                    v.manhattan_dist(e) <= glitch_length
-                        && graph.contains_key(&e)
-                        && !graph[&v].contains_key(&e)
-                })
-            {
-                *mgraph.get_mut(&v).unwrap() = HashMap::from([(e, v.manhattan_dist(e))]);
-
-                let Some(glitch_len) = get_path_len(start, end, &mgraph) else {
-                    continue;
-                };
-                if glitch_len <= path.len() as i64 - CUTOFF_VALUE {
-                    t += 1;
-                }
+    let mut t = 0;
+    for (i, &v) in path.iter().enumerate() {
+        for (j, &w) in path.iter().enumerate().skip(i + CUTOFF_VALUE) {
+            let d: usize = v.manhattan_dist(w).try_into().unwrap();
+            if d <= glitch_length && j - i >= CUTOFF_VALUE + d {
+                t += 1;
             }
-            *mgraph.get_mut(&v).unwrap() = original.clone();
-
-            t
-        })
-        .sum();
+        }
+    }
 
     Ok(t)
 }
