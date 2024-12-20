@@ -135,15 +135,25 @@ fn n_with_glitches(
 
     let mut t = 0;
     for &v in graph.keys() {
-        for &w in graph.keys() {
-            let d: usize = v.manhattan_dist(w).try_into().unwrap();
+        for (w, d) in (v.x - glitch_length as i64..v.x + glitch_length as i64 + 1).flat_map(|x| {
+            (v.y - glitch_length as i64..v.y + glitch_length as i64 + 1)
+                .map(move |y| Vec2::new(x, y))
+                .filter_map(|w| {
+                    let d = v.manhattan_dist(w) as usize;
+                    if d <= glitch_length {
+                        Some((w, d))
+                    } else {
+                        None
+                    }
+                })
+        }) {
             let Some(sd) = start_distances.get(&v) else {
                 continue;
             };
             let Some(ed) = end_distances.get(&w) else {
                 continue;
             };
-            if d <= glitch_length && sd + d + ed <= target {
+            if sd + d + ed <= target {
                 t += 1;
             }
         }
