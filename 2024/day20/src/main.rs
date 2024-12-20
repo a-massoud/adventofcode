@@ -1,15 +1,12 @@
 // I still am actually proud of my first solution but this is undeniably better
 
-use anyhow::{anyhow, bail, Context};
+use anyhow::{bail, Context};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::env;
 use std::fmt::Display;
 use std::fs;
-use std::ops::{Add, AddAssign, Sub, SubAssign};
 
-const CUTOFF_VALUE: usize = 100;
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 struct Vec2 {
     x: i64,
     y: i64,
@@ -21,40 +18,7 @@ impl Vec2 {
     }
 
     fn manhattan_dist(self, other: Vec2) -> i64 {
-        let d = self - other;
-        d.x.abs() + d.y.abs()
-    }
-}
-
-impl AddAssign for Vec2 {
-    fn add_assign(&mut self, rhs: Self) {
-        self.x += rhs.x;
-        self.y += rhs.y;
-    }
-}
-
-impl Add for Vec2 {
-    type Output = Vec2;
-
-    fn add(mut self, rhs: Self) -> Self::Output {
-        self += rhs;
-        self
-    }
-}
-
-impl SubAssign for Vec2 {
-    fn sub_assign(&mut self, rhs: Self) {
-        self.x -= rhs.x;
-        self.y -= rhs.y;
-    }
-}
-
-impl Sub for Vec2 {
-    type Output = Vec2;
-
-    fn sub(mut self, rhs: Self) -> Self::Output {
-        self -= rhs;
-        self
+        (self.x - other.x).abs() + (self.y - other.y).abs()
     }
 }
 
@@ -68,15 +32,25 @@ type Graph = HashMap<Vec2, HashSet<Vec2>>;
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        bail!("usage: {} <input file>", args[0]);
+    if args.len() < 3 {
+        bail!("usage: {} <input file> <cutoff difference>", args[0]);
     }
+
+    let Ok(cutoff_diff) = args[2].parse() else {
+        bail!("cutoff difference must be a positive integer")
+    };
 
     let input = fs::read_to_string(&args[1]).context("reading input file")?;
     let (start, end, graph) = parse_input(&input).context("parsing input")?;
 
-    println!("Part 1: {}", n_with_glitches(start, end, &graph, 2)?);
-    println!("Part 2: {}", n_with_glitches(start, end, &graph, 20)?);
+    println!(
+        "Part 1: {}",
+        n_with_glitches(start, end, &graph, 2, cutoff_diff)?
+    );
+    println!(
+        "Part 2: {}",
+        n_with_glitches(start, end, &graph, 20, cutoff_diff)?
+    );
 
     Ok(())
 }
@@ -126,35 +100,22 @@ fn parse_input(input: &str) -> anyhow::Result<(Vec2, Vec2, Graph)> {
     Ok((start, end, graph))
 }
 
-fn get_shortest_path(start: Vec2, end: Vec2, graph: &Graph) -> Option<Vec<Vec2>> {
+fn get_distances(start: Vec2, graph: &Graph) -> HashMap<Vec2, usize> {
     let mut visited = HashMap::new();
     let mut queue = VecDeque::new();
     queue.push_back(start);
-    visited.insert(start, None);
+    visited.insert(start, (0, None));
     while let Some(v) = queue.pop_front() {
-        if v == end {
-            continue;
-        }
+        let d = visited.get(&v).unwrap().0;
         for &e in graph.get(&v).expect("malformed graph") {
             visited.entry(e).or_insert_with(|| {
                 queue.push_back(e);
-                Some(v)
+                (d + 1, Some(v))
             });
         }
     }
-    if !visited.contains_key(&end) {
-        return None;
-    }
 
-    let mut c = Some(end);
-    let mut path = Vec::new();
-    while let Some(v) = c {
-        path.push(v);
-        c = visited[&v];
-    }
-    path.reverse();
-
-    Some(path)
+    visited.into_iter().map(|(v, (d, _))| (v, d)).collect()
 }
 
 fn n_with_glitches(
@@ -162,14 +123,27 @@ fn n_with_glitches(
     end: Vec2,
     graph: &Graph,
     glitch_length: usize,
+    cutoff_diff: usize,
 ) -> anyhow::Result<i64> {
-    let path = get_shortest_path(start, end, graph).ok_or(anyhow!("no path found"))?;
+    let start_distances = get_distances(start, graph);
+    let Some(len) = start_distances.get(&end) else {
+        bail!("no path found")
+    };
+    let target = len - cutoff_diff;
+
+    let end_distances = get_distances(end, graph);
 
     let mut t = 0;
-    for (i, &v) in path.iter().enumerate() {
-        for (j, &w) in path.iter().enumerate().skip(i + CUTOFF_VALUE) {
+    for &v in graph.keys() {
+        for &w in graph.keys() {
             let d: usize = v.manhattan_dist(w).try_into().unwrap();
-            if d <= glitch_length && j - i >= CUTOFF_VALUE + d {
+            let Some(sd) = start_distances.get(&v) else {
+                continue;
+            };
+            let Some(ed) = end_distances.get(&w) else {
+                continue;
+            };
+            if d <= glitch_length && sd + d + ed <= target {
                 t += 1;
             }
         }
