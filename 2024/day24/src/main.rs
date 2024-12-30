@@ -1,3 +1,6 @@
+// I spent so long trying to come up with a clever solution, but I wound up learning graphviz
+// instead. Human eyes ftw!
+
 use anyhow::{bail, Context};
 use regex::Regex;
 use std::{cmp::Reverse, collections::HashMap, env, fs, sync::LazyLock};
@@ -32,14 +35,18 @@ impl Wire {
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        bail!("input file required");
+    if args.len() < 3 {
+        bail!("usage: {} <input file> <graph output file>", args[0]);
     }
 
     let input = fs::read_to_string(&args[1]).context("failed to read file")?;
     let input = parse_input(&input).context("failed to parse input")?;
 
     println!("Part 1: {}", eval_zs(&input));
+
+    let output = get_graphvis(&input);
+    fs::write(&args[2], output).context("failed to write output file")?;
+    println!("Part 2 complete");
 
     Ok(())
 }
@@ -103,4 +110,64 @@ fn eval_zs(wires: &HashMap<String, Wire>) -> u64 {
 
     v.iter()
         .fold(0u64, |acc, &(_, v)| (acc << 1) + if v { 1 } else { 0 })
+}
+
+fn get_graphvis(wires: &HashMap<String, Wire>) -> String {
+    let mut r = String::from("digraph wires {\n");
+
+    for (name, wire) in wires {
+        match wire {
+            Wire::Const(_) => {
+                r.push_str(name);
+                r.push_str(" [label=\"");
+                r.push_str(name);
+                r.push_str("\",color=blue];");
+            }
+            Wire::And(a, b) => {
+                r.push_str(name);
+                r.push_str(" [label=\"");
+                r.push_str(name);
+                r.push_str("\",color=red];");
+                r.push_str(a);
+                r.push_str("->");
+                r.push_str(name);
+                r.push(';');
+                r.push_str(b);
+                r.push_str("->");
+                r.push_str(name);
+                r.push(';');
+            }
+            Wire::Xor(a, b) => {
+                r.push_str(name);
+                r.push_str(" [label=\"");
+                r.push_str(name);
+                r.push_str("\",color=green];");
+                r.push_str(a);
+                r.push_str("->");
+                r.push_str(name);
+                r.push(';');
+                r.push_str(b);
+                r.push_str("->");
+                r.push_str(name);
+                r.push(';');
+            }
+            Wire::Or(a, b) => {
+                r.push_str(name);
+                r.push_str(" [label=\"");
+                r.push_str(name);
+                r.push_str("\",color=grey];");
+                r.push_str(a);
+                r.push_str("->");
+                r.push_str(name);
+                r.push(';');
+                r.push_str(b);
+                r.push_str("->");
+                r.push_str(name);
+                r.push(';');
+            }
+        }
+    }
+
+    r.push('}');
+    r
 }
