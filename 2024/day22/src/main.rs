@@ -2,11 +2,7 @@
 
 use anyhow::{bail, Context};
 use rayon::prelude::*;
-use std::{
-    collections::HashMap,
-    env, fs,
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashMap, env, fs};
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -64,38 +60,34 @@ fn max_bananas(input: &[i64]) -> i64 {
     }
     let monkeys = monkeys;
 
-    let cache = Arc::new(Mutex::new(HashMap::<(i64, i64, i64, i64), i64>::new()));
-    monkeys
-        .par_iter()
-        .map(|(_, changes)| {
-            let mut m = 0;
-
-            for seq in changes.windows(4) {
-                let mut t = 0;
-                let c = cache.lock().unwrap();
-                if let Some(&x) = c.get(&(seq[0], seq[1], seq[2], seq[3])) {
-                    t = x;
-                    drop(c);
-                } else {
-                    drop(c);
-                    for (p, c) in &monkeys {
-                        t += p
-                            .get(c.windows(4).position(|x| x == seq).unwrap_or(p.len()) + 4)
-                            .unwrap_or(&0);
+    let amts = monkeys
+        .into_par_iter()
+        .flat_map(|(prices, changes)| {
+            changes
+                .par_windows(4)
+                .enumerate()
+                .fold(HashMap::new, move |mut amts, (i, seq)| {
+                    if let Some(x) = amts.get_mut(&(seq[0], seq[1], seq[2], seq[3])) {
+                        *x += prices[i + 4];
+                    } else {
+                        amts.insert((seq[0], seq[1], seq[2], seq[3]), prices[i + 4]);
                     }
-                    cache
-                        .lock()
-                        .unwrap()
-                        .insert((seq[0], seq[1], seq[2], seq[3]), t);
-                }
 
-                if t > m {
-                    m = t;
+                    amts
+                })
+                .collect_vec_list()
+        })
+        .flatten()
+        .reduce(HashMap::new, |mut acc, amts| {
+            for (seq, amt) in amts {
+                if let Some(x) = acc.get_mut(&seq) {
+                    *x += amt;
+                } else {
+                    acc.insert(seq, amt);
                 }
             }
+            acc
+        });
 
-            m
-        })
-        .max()
-        .unwrap_or(0)
+    amts.into_par_iter().map(|(_, x)| x).max().unwrap_or(0)
 }
