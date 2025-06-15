@@ -24,6 +24,8 @@ int main(int argc, char *argv[]) {
 
   std::string part1 = step_n(input, 40);
   std::println("Part 1 result: {}", part1.length());
+  std::string part2 = step_n(part1, 10);
+  std::println("Part 2 result: {}", part2.length());
 
   return 0;
 }
