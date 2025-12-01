@@ -9,3 +9,4 @@ sample.txt
 .vscode/
 Cargo.lock
 target/
+.idea/
