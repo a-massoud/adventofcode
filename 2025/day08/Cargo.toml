@@ -1,0 +1,9 @@
+[package]
+name = "aoc2025d08"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+nalgebra = "0.34.1"
+num = "0.4.3"
