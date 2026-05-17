@@ -10,3 +10,4 @@ sample.txt
 Cargo.lock
 target/
 .idea/
+.venv/
