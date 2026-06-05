@@ -1,0 +1,4 @@
+_HiStOrY_V2_
+#include\040<print>\012
+#pragma\040omp\040parallel\040for\012
+for\040(int\040i\040=\0400;\040i\040<\040500;\040++i)\040std::println("{}",\040i);\012
