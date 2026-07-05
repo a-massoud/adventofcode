@@ -1,0 +1,9 @@
+[package]
+name = "aoc2016d24"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+color-eyre = "0.6.5"
+eyre = "0.6.12"
+itertools = "0.15.0"
