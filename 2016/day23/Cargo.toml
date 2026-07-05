@@ -1,0 +1,8 @@
+[package]
+name = "aoc2016d23"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.103"
+enum-map = "2.7.3"
