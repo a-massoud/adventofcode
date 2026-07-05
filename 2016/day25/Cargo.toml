@@ -1,0 +1,9 @@
+[package]
+name = "aoc2016d25"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+color-eyre = "0.6.5"
+enum-map = "2.7.3"
+eyre = "0.6.12"
