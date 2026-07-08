@@ -144,7 +144,7 @@ impl Program {
     }
 
     fn try_optimize(instructions: &[Instruction], state: &mut State, ip: isize) -> Option<isize> {
-        if ip > 0
+        if ip >= 0
             && (ip as usize) + 5 < instructions.len()
             && let Instruction::Copy {
                 src,
@@ -211,7 +211,7 @@ impl Program {
             return Some(6);
         }
 
-        if ip > 0
+        if ip >= 0
             && (ip as usize) + 2 < instructions.len()
             && let Instruction::Jnz {
                 src: Arg::Register(counter),
